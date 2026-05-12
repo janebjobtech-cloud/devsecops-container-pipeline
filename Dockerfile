@@ -5,7 +5,7 @@ LABEL org.opencontainers.image.description="Container pipeline demo application"
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ .
