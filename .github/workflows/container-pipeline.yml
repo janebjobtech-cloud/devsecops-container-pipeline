@@ -1,4 +1,4 @@
-﻿name: Container Image Pipeline
+name: Container Image Pipeline
 
 on:
   push:
