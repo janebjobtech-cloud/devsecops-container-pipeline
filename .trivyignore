@@ -1,0 +1,5 @@
+﻿# .trivyignore
+# Format: one CVE ID per line with a comment explaining the accepted risk
+# Each entry should be reviewed on a regular cadence
+# Example - remove this and add real accepted risks as they are identified
+# CVE-2023-XXXXX # Accepted: affects feature not used in this image, no fix available

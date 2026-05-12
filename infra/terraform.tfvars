@@ -1,0 +1,2 @@
+﻿yourname = "janeburo"
+location = "eastus"
