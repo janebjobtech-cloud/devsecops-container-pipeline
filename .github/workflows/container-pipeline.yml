@@ -166,8 +166,8 @@ jobs:
       - name: Promote image to production ACR
         run: |
           az acr import \
-            --name ${{ secrets.PROD_ACR_NAME }} \
-            --source ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --name acrprodjaneburo \
+            --source acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
             --image ${{ env.IMAGE_NAME }}:latest \
             --force
@@ -176,6 +176,7 @@ jobs:
         run: |
           echo "Image promoted to production:"
           az acr repository show-tags \
-            --name ${{ secrets.PROD_ACR_NAME }} \
+            --name acrprodjaneburo \
             --repository ${{ env.IMAGE_NAME }} \
+            --output table
             --output table
