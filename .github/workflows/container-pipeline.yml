@@ -1,4 +1,4 @@
-﻿name: Container Image Pipeline
+name: Container Image Pipeline
 
 on:
   push:
@@ -18,41 +18,26 @@ jobs:
   build:
     name: Build and Push to Staging
     runs-on: ubuntu-latest
-    outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
-      image-digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Login to Azure CLI
         run: |
-          az login --service-principal \
-            --username ${{ secrets.STAGING_CLIENT_ID }} \
-            --password ${{ secrets.STAGING_CLIENT_SECRET }} \
-            --tenant ${{ secrets.AZURE_TENANT_ID }}
-          az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          az login --service-principal --username ${{ secrets.STAGING_CLIENT_ID }} --password ${{ secrets.STAGING_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+          az account set --subscription 77a478f1-cf4f-4516-ab81-e0614ec50b95
 
       - name: Authenticate Docker to Staging ACR
-        run: az acr login --name ${{ secrets.STAGING_ACR_NAME }}
-
-      - name: Generate image metadata
-        id: meta
-        run: |
-          echo "tags=${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+        run: az acr login --name acrstagingjaneburo
 
       - name: Build and push to staging
-        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: |
-            ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:staging-latest
-          labels: |
-            org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.created=${{ github.event.repository.updated_at }}
+            acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:staging-latest
 
   scan:
     name: Vulnerability Scan
@@ -64,30 +49,26 @@ jobs:
 
       - name: Login to Azure CLI
         run: |
-          az login --service-principal \
-            --username ${{ secrets.STAGING_CLIENT_ID }} \
-            --password ${{ secrets.STAGING_CLIENT_SECRET }} \
-            --tenant ${{ secrets.AZURE_TENANT_ID }}
-          az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          az login --service-principal --username ${{ secrets.STAGING_CLIENT_ID }} --password ${{ secrets.STAGING_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+          az account set --subscription 77a478f1-cf4f-4516-ab81-e0614ec50b95
 
       - name: Authenticate Docker to Staging ACR
-        run: az acr login --name ${{ secrets.STAGING_ACR_NAME }}
+        run: az acr login --name acrstagingjaneburo
 
       - name: Run Trivy vulnerability scan
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image-ref: acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: table
           exit-code: '1'
           ignore-unfixed: true
           severity: CRITICAL,HIGH
-          trivyignores: .trivyignore
 
-      - name: Run Trivy scan JSON output for artifact
+      - name: Run Trivy scan JSON output
         if: always()
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image-ref: acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
           format: json
           output: trivy-results.json
           ignore-unfixed: true
@@ -111,14 +92,11 @@ jobs:
 
       - name: Login to Azure CLI
         run: |
-          az login --service-principal \
-            --username ${{ secrets.STAGING_CLIENT_ID }} \
-            --password ${{ secrets.STAGING_CLIENT_SECRET }} \
-            --tenant ${{ secrets.AZURE_TENANT_ID }}
-          az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          az login --service-principal --username ${{ secrets.STAGING_CLIENT_ID }} --password ${{ secrets.STAGING_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+          az account set --subscription 77a478f1-cf4f-4516-ab81-e0614ec50b95
 
       - name: Authenticate Docker to Staging ACR
-        run: az acr login --name ${{ secrets.STAGING_ACR_NAME }}
+        run: az acr login --name acrstagingjaneburo
 
       - name: Install Trivy
         run: |
@@ -126,19 +104,11 @@ jobs:
           echo "deb https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
           sudo apt-get update && sudo apt-get install -y trivy
 
-      - name: Generate SBOM CycloneDX format
-        run: |
-          trivy image \
-            --format cyclonedx \
-            --output sbom-cyclonedx.json \
-            ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      - name: Generate SBOM CycloneDX
+        run: trivy image --format cyclonedx --output sbom-cyclonedx.json acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
-      - name: Generate SBOM SPDX format
-        run: |
-          trivy image \
-            --format spdx-json \
-            --output sbom-spdx.json \
-            ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      - name: Generate SBOM SPDX
+        run: trivy image --format spdx-json --output sbom-spdx.json acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Upload SBOMs
         uses: actions/upload-artifact@v4
@@ -157,25 +127,11 @@ jobs:
     steps:
       - name: Login to Azure CLI
         run: |
-          az login --service-principal \
-            --username ${{ secrets.PROD_CLIENT_ID }} \
-            --password ${{ secrets.PROD_CLIENT_SECRET }} \
-            --tenant ${{ secrets.AZURE_TENANT_ID }}
-          az account set --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          az login --service-principal --username ${{ secrets.PROD_CLIENT_ID }} --password ${{ secrets.PROD_CLIENT_SECRET }} --tenant ${{ secrets.AZURE_TENANT_ID }}
+          az account set --subscription 77a478f1-cf4f-4516-ab81-e0614ec50b95
 
       - name: Promote image to production ACR
-        run: |
-          az acr import \
-            --name ${{ secrets.PROD_ACR_NAME }} \
-            --source ${{ secrets.STAGING_ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --image ${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            --image ${{ env.IMAGE_NAME }}:latest \
-            --force
+        run: az acr import --name acrprodjaneburo --source acrstagingjaneburo.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} --image ${{ env.IMAGE_NAME }}:${{ github.sha }} --image ${{ env.IMAGE_NAME }}:latest --force
 
       - name: Confirm production image
-        run: |
-          echo "Image promoted to production:"
-          az acr repository show-tags \
-            --name ${{ secrets.PROD_ACR_NAME }} \
-            --repository ${{ env.IMAGE_NAME }} \
-            --output table
+        run: az acr repository show-tags --name acrprodjaneburo --repository ${{ env.IMAGE_NAME }} --output table
